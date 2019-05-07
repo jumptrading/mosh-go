@@ -22,7 +22,7 @@ namespace mosh
         /// with one optional argument added at the very end: mosh ports range in format <c>#####:#####</c> (i.e. <c>60000:60050</c>).
         /// If mosh ports range argument isn't specified, it will default to <c>60000:60050</c>.</param>
         /// <returns>Return codes:
-        /// <list type="bulet">
+        /// <list type="bullet">
         /// <item>0 - Success;</item>
         /// <item>1 - Invalid arguments;</item>
         /// <item>2 - mosh-client.exe not found;</item>
