@@ -50,11 +50,11 @@ namespace mosh
             {
                 return Run(args);
             } catch (InvalidArgsException e) {
-                Console.Write(e.Message);
+                Console.Error.Write(e.Message);
                 return (int)ExitCode.InvalidArgs;
             } catch (Exception e)
             {
-                Console.Write(e.Message);
+                Console.Error.Write(e.Message);
                 return (int)ExitCode.ConnectionError;
             }
         }
