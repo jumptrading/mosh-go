@@ -1,16 +1,24 @@
-Command mosh is an alternative wrapper to mosh-client command that plays
-well with socks proxies.
+Windows native port of original [Mobile Shell](https://github.com/mobile-shell/mosh) project.  
+MinGW 32-bit and 64-bit toolchains are supported to build [mosh-client](client). No dependencies on MSYS or Cygwin.  
+`mosh-server` Windows native build is not supported.
 
-It only exists because of [this bug in original mosh](https://github.com/mobile-shell/mosh/issues/285), which make mosh ignore `ProxyCommand` that I use to access restricted sites via socks proxy.
+Instead of [original Perl based wrapper](https://github.com/mobile-shell/mosh/blob/335e3869b7af59314255a121ec7ed0f6309b06e7/scripts/mosh.pl) around `mosh-client` this port maintains [C#](mosh_cs) and [GoLang](mosh_go) wrappers.
 
-This `mosh` allows to use mosh in setups where initial ssh connection to start mosh server can only be done via socks5 proxy specified as `ALL_PROXY=socks5://host:port`.
+`GoLang` mosh wrapper is taken from https://github.com/artyom/mosh and is not actively used for the moment.
 
-Supported environment variables:
+Both `mosh-client` and `C# wrapper` are distributed in binary form as part of [Fluent Terminal](https://github.com/felixse/fluentterminal).
 
-* `MOSH_USER` — default user when doing ssh connection;
-* `MOSH_PORTS` - port or colon-separated port range to start mosh-server with.
+### Build mosh-client
 
-Authentication is performed using ssh-agent, its socket is expected to be available at `SSH_AUTH_SOCK`.
+You should have `MinGW` compiler and `CMake` pre-installed and available in your `%PATH%`.
+
+```cmd
+cd client && mkdir build && cd build
+cmake -G "MinGW Makefiles" ..
+cmake --build .
+```
+
+Prebuilt static libs of Protobuf, Zlib and OpenSSL reside in repo both for [x86](client/libs32) and [x64](client/libs) platforms.
 
 
 ### Build Protobuf with MinGW
@@ -20,6 +28,12 @@ mkdir mingw_build && cd mingw_build
 cmake -G "MinGW Makefiles" -Dprotobuf_BUILD_SHARED_LIBS=OFF -Dprotobuf_UNICODE=OFF -Dprotobuf_BUILD_TESTS=0 -DCMAKE_INSTALL_PREFIX=./ ../cmake
 mingw32-make -j10 all
 mingw32-make install
+```
+
+### Generate mosh protocol [CPP sources](client/mosh-client/protobufs) with Protobuf
+
+```cmd
+%PROTOBUF_PATH%/protoc.exe --cpp_out=. userinput.proto hostinput.proto transportinstruction.proto
 ```
 
 ### Build ZLib with MinGW
