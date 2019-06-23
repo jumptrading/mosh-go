@@ -1,6 +1,21 @@
 cmake_minimum_required(VERSION 3.13)
 project(mosh-client)
 
+set(ARCH_x64 FALSE)
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+  set(ARCH_x64 TRUE)
+endif()
+
+message(STATUS "ARCH_x64: ${ARCH_x64}")
+
+if(ARCH_x64)
+  set(PREBUILT_LIBS_DIR libs)
+else()
+  set(PREBUILT_LIBS_DIR libs32)
+endif()
+
+message(STATUS "PREBUILT_LIBS_DIR: ${PREBUILT_LIBS_DIR}")
+
 set(LIB_MOSH_SRC mosh-client/libinterface.cpp
                 mosh-client/stmclient.cpp
                 mosh-client/terminaloverlay.cpp
@@ -49,6 +64,6 @@ include_directories(mosh-client/openssl-1.1.1b-win64-mingw/include)
 add_library(moshclient STATIC ${LIB_MOSH_SRC})
 add_executable(${PROJECT_NAME} ${MOSH_SRC})
 
-target_link_libraries(${PROJECT_NAME} -L${PROJECT_SOURCE_DIR}/libs)
+target_link_libraries(${PROJECT_NAME} -L${PROJECT_SOURCE_DIR}/${PREBUILT_LIBS_DIR})
 target_link_libraries(${PROJECT_NAME} moshclient)
 target_link_libraries(${PROJECT_NAME} -static -lprotobuf -lprotobuf-lite -lprotoc -lcrypto -lssl -pthread -lpthread -lws2_32 -lz)
