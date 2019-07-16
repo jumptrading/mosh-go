@@ -9,12 +9,12 @@ namespace mosh
 {
     class MoshClientNotFound : Exception
     {
-        public MoshClientNotFound(string message) : base("mosh client not found:" + message) { }
+        public MoshClientNotFound(string message) : base(message) { }
     }
 
     internal class MoshClientWrapper
     {
-        internal const string MoshClientAppSettingsKey = "mosh-client";
+        private const string MoshClientAppSettingsKey = "mosh-client";
         private const string MoshClientExeName = "mosh-client.exe";
 
         private readonly string MoshClientExePath;
@@ -35,11 +35,17 @@ namespace mosh
             path = new FileInfo(Assembly.GetExecutingAssembly().Location).Directory?.FullName;
             if (string.IsNullOrEmpty(path))
             {
-                throw new MoshClientNotFound("Could not determine program name");
+                throw new MoshClientNotFound($"Could not determine program name while looking for {MoshClientExeName}");
             }
             path = Path.Combine(path, MoshClientExeName);
             if (!File.Exists(path)) {
-                throw new MoshClientNotFound("not adjacent to mosh.exe");
+                throw new MoshClientNotFound(String.Join(
+                    Environment.NewLine,
+                    $"{MoshClientExeName} file cannot be found. Possible solutions are:",
+                    $"  - Specify full file path in appSettings section of mosh.config file, with key \"{MoshClientAppSettingsKey}\"",
+                    $"  - Copy {MoshClientExeName} file (with this exact name) into the current working directory",
+                    $"  - Copy {MoshClientExeName} file (with this exact name) into the same directory where current executable (mosh.exe) is."
+                ));
             }
             return path;
         }

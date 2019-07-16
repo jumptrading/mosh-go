@@ -61,19 +61,7 @@ namespace mosh
 
         static int Run(string[] args)
         {
-            MoshClientWrapper moshClient;
-            try
-            {
-                moshClient = new MoshClientWrapper();
-            } catch (MoshClientNotFound) { 
-                throw new ConnectionError(String.Join(
-                    Environment.NewLine,
-                    "mosh-client.exe file cannot be found. Possible solutions are:",
-                    $"  - Specify full file path in appSettings section of mosh.config file, with key \"{MoshClientWrapper.MoshClientAppSettingsKey}\"",
-                    $"  - Copy mosh-client.exe file (with this exact name) into the current working directory",
-                    $"  - Copy mosh-client.exe file (with this exact name) into the same directory where current executable (mosh.exe) is."
-                ));
-            }
+            var moshClient = new MoshClientWrapper();
 
             List<string> argList = args.ToList();
 
