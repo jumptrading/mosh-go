@@ -101,7 +101,7 @@ namespace mosh
 
             string sshArgs = string.Join(" ", argList.Select(QuoteIfNeeded));
 
-            var moshPortAndKey = SshAuthenticator.GetMoshPortAndKey(sshArgs, moshPortRange);
+            var portAndKey = SshAuthenticator.GetMoshPortAndKey(sshArgs, moshPortRange);
             Console.Clear();
 
             string strHost = userHostMatch.Groups["host"].Value;
@@ -116,8 +116,7 @@ namespace mosh
                 }
             }
 
-            return moshClient.Start(userHostMatch.Groups["user"].Value, host,
-                    moshPortAndKey.Item1, moshPortAndKey.Item2);
+            return moshClient.Start(userHostMatch.Groups["user"].Value, host, portAndKey.Port, portAndKey.Key);
         }
 
 
