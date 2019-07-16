@@ -66,20 +66,20 @@ namespace mosh
 
         internal int Start(string moshUser, IPAddress host, string moshPort, string moshKey)
         {
-            using (Process sshProcess = new Process())
+            using (Process clientProcess = new Process())
             {
-                sshProcess.StartInfo.FileName = MoshClientExePath;
-                sshProcess.StartInfo.UseShellExecute = false;
-                sshProcess.StartInfo.RedirectStandardInput = false;
-                sshProcess.StartInfo.RedirectStandardOutput = false;
-                sshProcess.StartInfo.RedirectStandardError = false;
-                sshProcess.StartInfo.Arguments = $"{host} {moshPort}";
-                sshProcess.StartInfo.EnvironmentVariables.Add("MOSH_KEY", moshKey);
-                sshProcess.StartInfo.EnvironmentVariables.Add("MOSH_USER", moshUser);
+                clientProcess.StartInfo.FileName = MoshClientExePath;
+                clientProcess.StartInfo.UseShellExecute = false;
+                clientProcess.StartInfo.RedirectStandardInput = false;
+                clientProcess.StartInfo.RedirectStandardOutput = false;
+                clientProcess.StartInfo.RedirectStandardError = false;
+                clientProcess.StartInfo.Arguments = $"{host} {moshPort}";
+                clientProcess.StartInfo.EnvironmentVariables.Add("MOSH_KEY", moshKey);
+                clientProcess.StartInfo.EnvironmentVariables.Add("MOSH_USER", moshUser);
 
-                sshProcess.Start();
-                sshProcess.WaitForExit();
-                return sshProcess.ExitCode;
+                clientProcess.Start();
+                clientProcess.WaitForExit();
+                return clientProcess.ExitCode;
             }
         }
 
