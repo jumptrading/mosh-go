@@ -102,11 +102,6 @@ namespace mosh
             string sshArgs = string.Join(" ", argList.Select(QuoteIfNeeded));
 
             var moshPortAndKey = SshAuthenticator.GetMoshPortAndKey(sshArgs, moshPortRange);
-            if (moshPortAndKey == null)
-            {
-                throw new ConnectionError("Remote server has not returned a valid MOSH CONNECT response.");
-            }
-
             Console.Clear();
 
             string strHost = userHostMatch.Groups["host"].Value;
