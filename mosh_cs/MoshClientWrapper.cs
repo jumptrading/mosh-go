@@ -64,7 +64,7 @@ namespace mosh
             return path;
         }
 
-        internal int Start(string moshUser, IPAddress host, string moshPort, string moshKey)
+        internal int Start(string user, IPAddress host, string moshPort, string moshKey)
         {
             using (Process clientProcess = new Process())
             {
@@ -75,7 +75,7 @@ namespace mosh
                 clientProcess.StartInfo.RedirectStandardError = false;
                 clientProcess.StartInfo.Arguments = $"{host} {moshPort}";
                 clientProcess.StartInfo.EnvironmentVariables.Add("MOSH_KEY", moshKey);
-                clientProcess.StartInfo.EnvironmentVariables.Add("MOSH_USER", moshUser);
+                clientProcess.StartInfo.EnvironmentVariables.Add("MOSH_USER", user);
 
                 clientProcess.Start();
                 clientProcess.WaitForExit();
