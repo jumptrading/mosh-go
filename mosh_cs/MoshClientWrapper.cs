@@ -7,44 +7,64 @@ using System.Reflection;
 
 namespace mosh
 {
-    internal static class MoshClientWrapper
+    class MoshClientNotFound : Exception
+    {
+        public MoshClientNotFound(string message) : base("mosh client not found:" + message) { }
+    }
+
+    internal class MoshClientWrapper
     {
         internal const string MoshClientAppSettingsKey = "mosh-client";
         private const string MoshClientExeName = "mosh-client.exe";
 
-        private static readonly Lazy<string> MoshClientExePathLazy = new Lazy<string>(() => {
+        private readonly string MoshClientExePath;
+
+        public MoshClientWrapper()
+        {
+            MoshClientExePath = FindMoshClientExe();
+        }
+
+        private string FindMoshClientExe() {
+            string path = GetMoshClientPathFromSettings();
+            if (path != null)
+            {
+                return path;
+            }
+
+            // Look for mosh-client.exe next to mosh.exe.
+            path = new FileInfo(Assembly.GetExecutingAssembly().Location).Directory?.FullName;
+            if (string.IsNullOrEmpty(path))
+            {
+                throw new MoshClientNotFound("Could not determine program name");
+            }
+            path = Path.Combine(path, MoshClientExeName);
+            if (!File.Exists(path)) {
+                throw new MoshClientNotFound("not adjacent to mosh.exe");
+            }
+            return path;
+        }
+
+        private string GetMoshClientPathFromSettings() { 
             AppSettingsReader asr = new AppSettingsReader();
 
             string path;
-
             try
             {
                 path = (string)asr.GetValue(MoshClientAppSettingsKey, typeof(string));
-
-                if (!string.IsNullOrEmpty(path) && File.Exists(path))
-                    return path;
             }
-            catch
+            catch (InvalidOperationException)
             {
-                // ignored
+                return null; // key is missing or wrong type, ignore
             }
 
-            if (File.Exists(MoshClientExeName))
-                return MoshClientExeName;
-
-            path = new FileInfo(Assembly.GetExecutingAssembly().Location).Directory?.FullName;
-
-            if (string.IsNullOrEmpty(path))
+            if (string.IsNullOrEmpty(path) || !File.Exists(path))
+            {
                 return null;
+            }
+            return path;
+        }
 
-            path = Path.Combine(path, MoshClientExeName);
-
-            return File.Exists(path) ? path : null;
-        });
-
-        internal static string MoshClientExePath => MoshClientExePathLazy.Value;
-
-        internal static int StartMoshSession(string moshUser, IPAddress host, string moshPort, string moshKey)
+        internal int Start(string moshUser, IPAddress host, string moshPort, string moshKey)
         {
             using (Process sshProcess = new Process())
             {
@@ -58,9 +78,7 @@ namespace mosh
                 sshProcess.StartInfo.EnvironmentVariables.Add("MOSH_USER", moshUser);
 
                 sshProcess.Start();
-
                 sshProcess.WaitForExit();
-
                 return sshProcess.ExitCode;
             }
         }

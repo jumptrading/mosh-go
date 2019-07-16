@@ -61,8 +61,11 @@ namespace mosh
 
         static int Run(string[] args)
         {
-            if (string.IsNullOrEmpty(MoshClientWrapper.MoshClientExePath))
+            MoshClientWrapper moshClient;
+            try
             {
+                moshClient = new MoshClientWrapper();
+            } catch (MoshClientNotFound) { 
                 throw new ConnectionError(String.Join(
                     Environment.NewLine,
                     "mosh-client.exe file cannot be found. Possible solutions are:",
@@ -118,7 +121,7 @@ namespace mosh
                 }
             }
 
-            return MoshClientWrapper.StartMoshSession(userHostMatch.Groups["user"].Value, host,
+            return moshClient.Start(userHostMatch.Groups["user"].Value, host,
                     moshPortAndKey.Item1, moshPortAndKey.Item2);
         }
 
