@@ -24,7 +24,7 @@ namespace mosh
 
     class Program
     {
-        private const string DefaultMoshPortRange = "60000:60050";
+        private const string DefaultMoshPortRange = "60000:60999";
 
         private static readonly Regex ShouldQuoteRx = new Regex("[\\s\"]", RegexOptions.Compiled);
         private static readonly Regex MoshPortRangeRx = new Regex(@"^\s*\d{1,5}:\d{1,5}\s*");
@@ -36,7 +36,7 @@ namespace mosh
         /// <param name="args">
         /// Input arguments are the same as for OpenSSH (<see cref="!https://man.openbsd.org/ssh">https://man.openbsd.org/ssh</see>),
         /// with one optional argument added at the very end: mosh ports range in format <c>#####:#####</c> (i.e. <c>60000:60050</c>).
-        /// If mosh ports range argument isn't specified, it will default to <c>60000:60050</c>.</param>
+        /// If mosh ports range argument isn't specified, it will default to <c>60000:60099</c>.</param>
         /// <returns>Return codes:
         /// <list type="bullet">
         /// <item>254 - Invalid command line arguments.</item>
