@@ -6,6 +6,18 @@ using System.Threading;
 
 namespace mosh
 {
+    struct PortKeyPair
+    {
+        public string Port;
+        public string Key;
+
+        public PortKeyPair(string port, string key)
+        {
+            Port = port;
+            Key = key;
+        }
+    } 
+
     internal static class SshAuthenticator
     {
         private static readonly Regex MoshConnectRx =
@@ -24,11 +36,9 @@ namespace mosh
             return Path.Combine(system32Folder, @"OpenSSH\ssh.exe");
         }
 
-        internal static Tuple<string,string> GetMoshPortAndKey(string sshArgs, string moshPortRange)
+        internal static PortKeyPair GetMoshPortAndKey(string sshArgs, string moshPortRange)
         {
-            object procLock = new object();
-
-            Tuple<string, string> portAndKey = null;
+            PortKeyPair? portAndKey = null;
 
             using (Process sshProcess = new Process())
             {
@@ -38,31 +48,24 @@ namespace mosh
                 sshProcess.StartInfo.RedirectStandardOutput = true;
                 sshProcess.StartInfo.RedirectStandardError = false;
                 sshProcess.StartInfo.Arguments = $"-T {sshArgs} \"mosh-server -p {moshPortRange}\"";
-
-                sshProcess.OutputDataReceived += (sender, e) =>
-                {
-                    lock (procLock)
-                    {
-                        if (string.IsNullOrWhiteSpace(e.Data))
-                            return;
-
-                        Match match = MoshConnectRx.Match(e.Data);
-
-                        if (match.Success)
-                            portAndKey = Tuple.Create(match.Groups["mosh_port"].Value, match.Groups["mosh_key"].Value);
-                    }
-                };
-
                 sshProcess.Start();
-                sshProcess.BeginOutputReadLine();
 
+                // Find the MOSH_CONNECT string from mosh-server.
+                string line;
+                while ((line = sshProcess.StandardOutput.ReadLine()) != null) {
+                    Match match = MoshConnectRx.Match(line);
+                    if (match.Success)
+                    {
+                        portAndKey = new PortKeyPair(match.Groups["mosh_port"].Value, match.Groups["mosh_key"].Value);
+                    }
+                }
                 sshProcess.WaitForExit();
 
-                // Avoid leaving the method prematurely
-                Thread.Sleep(20);
-
-                lock (procLock)
-                    return portAndKey;
+                if (portAndKey == null)
+                {
+                    throw new ConnectionError("Remote server has not returned a valid MOSH CONNECT response.");
+                }
+                return (PortKeyPair)portAndKey;
             }
         }
     }

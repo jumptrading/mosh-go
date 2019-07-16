@@ -24,7 +24,7 @@ namespace mosh
 
     class Program
     {
-        private const string DefaultMoshPortRange = "60000:60050";
+        private const string DefaultMoshPortRange = "60000:60999";
 
         private static readonly Regex ShouldQuoteRx = new Regex("[\\s\"]", RegexOptions.Compiled);
         private static readonly Regex MoshPortRangeRx = new Regex(@"^\s*\d{1,5}:\d{1,5}\s*");
@@ -36,7 +36,7 @@ namespace mosh
         /// <param name="args">
         /// Input arguments are the same as for OpenSSH (<see cref="!https://man.openbsd.org/ssh">https://man.openbsd.org/ssh</see>),
         /// with one optional argument added at the very end: mosh ports range in format <c>#####:#####</c> (i.e. <c>60000:60050</c>).
-        /// If mosh ports range argument isn't specified, it will default to <c>60000:60050</c>.</param>
+        /// If mosh ports range argument isn't specified, it will default to <c>60000:60099</c>.</param>
         /// <returns>Return codes:
         /// <list type="bullet">
         /// <item>254 - Invalid command line arguments.</item>
@@ -61,16 +61,7 @@ namespace mosh
 
         static int Run(string[] args)
         {
-            if (string.IsNullOrEmpty(MoshClientWrapper.MoshClientExePath))
-            {
-                throw new ConnectionError(String.Join(
-                    Environment.NewLine,
-                    "mosh-client.exe file cannot be found. Possible solutions are:",
-                    $"  - Specify full file path in appSettings section of mosh.config file, with key \"{MoshClientWrapper.MoshClientAppSettingsKey}\"",
-                    $"  - Copy mosh-client.exe file (with this exact name) into the current working directory",
-                    $"  - Copy mosh-client.exe file (with this exact name) into the same directory where current executable (mosh.exe) is."
-                ));
-            }
+            var moshClient = new MoshClientWrapper();
 
             List<string> argList = args.ToList();
 
@@ -96,32 +87,33 @@ namespace mosh
                 throw new InvalidArgsException("Determining user and host from the specified arguments failed");
             }
 
-            string sshArgs = string.Join(" ", argList.Select(QuoteIfNeeded));
-
-            var moshPortAndKey = SshAuthenticator.GetMoshPortAndKey(sshArgs, moshPortRange);
-            if (moshPortAndKey == null)
-            {
-                throw new ConnectionError("Remote server has not returned a valid MOSH CONNECT response.");
-            }
+            var sshArgs = string.Join(" ", argList.Select(QuoteIfNeeded));
+            var portAndKey = SshAuthenticator.GetMoshPortAndKey(sshArgs, moshPortRange);
 
             Console.Clear();
 
-            string strHost = userHostMatch.Groups["host"].Value;
-            if (!IPAddress.TryParse(strHost, out IPAddress host))
-            {
-                IPHostEntry hostInfo;
-                hostInfo = Dns.GetHostEntry(strHost);
-                host = hostInfo.AddressList.FirstOrDefault();
-                if (host == null)
-                {
-                    throw new ConnectionError($"Failed to resolve host '{strHost}'.");
-                }
-            }
-
-            return MoshClientWrapper.StartMoshSession(userHostMatch.Groups["user"].Value, host,
-                    moshPortAndKey.Item1, moshPortAndKey.Item2);
+            var user = userHostMatch.Groups["user"].Value;
+            var ip = HostToIP(userHostMatch.Groups["host"].Value);
+            return moshClient.Start(user, ip, portAndKey.Port, portAndKey.Key);
         }
 
+        private static IPAddress HostToIP(string host)
+        {
+            if (IPAddress.TryParse(host, out IPAddress ip))
+            {
+                return ip; // already in IP form
+            }
+
+            // Attempt DNS resolution.
+            IPHostEntry hostInfo;
+            hostInfo = Dns.GetHostEntry(host);
+            ip = hostInfo.AddressList.FirstOrDefault();
+            if (ip == null)
+            {
+                throw new ConnectionError($"Failed to resolve host '{host}'");
+            }
+            return ip;
+        }
 
         private static string QuoteIfNeeded(string input)
         {
