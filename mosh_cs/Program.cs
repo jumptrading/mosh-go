@@ -87,26 +87,33 @@ namespace mosh
                 throw new InvalidArgsException("Determining user and host from the specified arguments failed");
             }
 
-            string sshArgs = string.Join(" ", argList.Select(QuoteIfNeeded));
-
+            var sshArgs = string.Join(" ", argList.Select(QuoteIfNeeded));
             var portAndKey = SshAuthenticator.GetMoshPortAndKey(sshArgs, moshPortRange);
+
             Console.Clear();
 
-            string strHost = userHostMatch.Groups["host"].Value;
-            if (!IPAddress.TryParse(strHost, out IPAddress host))
-            {
-                IPHostEntry hostInfo;
-                hostInfo = Dns.GetHostEntry(strHost);
-                host = hostInfo.AddressList.FirstOrDefault();
-                if (host == null)
-                {
-                    throw new ConnectionError($"Failed to resolve host '{strHost}'.");
-                }
-            }
-
-            return moshClient.Start(userHostMatch.Groups["user"].Value, host, portAndKey.Port, portAndKey.Key);
+            var user = userHostMatch.Groups["user"].Value;
+            var ip = HostToIP(userHostMatch.Groups["host"].Value);
+            return moshClient.Start(user, ip, portAndKey.Port, portAndKey.Key);
         }
 
+        private static IPAddress HostToIP(string host)
+        {
+            if (IPAddress.TryParse(host, out IPAddress ip))
+            {
+                return ip; // already in IP form
+            }
+
+            // Attempt DNS resolution.
+            IPHostEntry hostInfo;
+            hostInfo = Dns.GetHostEntry(host);
+            ip = hostInfo.AddressList.FirstOrDefault();
+            if (ip == null)
+            {
+                throw new ConnectionError($"Failed to resolve host '{host}'");
+            }
+            return ip;
+        }
 
         private static string QuoteIfNeeded(string input)
         {
