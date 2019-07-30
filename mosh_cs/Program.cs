@@ -28,7 +28,7 @@ namespace mosh
         private const string DefaultMoshPortRange = "60000:60999";
 
         private static readonly Regex MoshPortRangeRx = new Regex(@"^\d{1,5}(:\d{1,5})?$");
-        private static readonly Regex UserHostRx = new Regex(@"(?<user>[^\s;@]+)(;[^\s@]*)?@(?<host>[^\s:]+)$");
+        private static readonly Regex UserHostRx = new Regex(@"^(?:(?<user>[^\s;@]+)(?:;[^\s@]*)?@)?(?<host>[^@\s:]+)$");
 
         private class Args
         {
@@ -36,6 +36,19 @@ namespace mosh
             public string SshArgs;
             public string User;
             public string Host;
+
+            internal void SetTarget(string target)
+            {
+                var match = UserHostRx.Match(target);
+                if (!match.Success)
+                {
+                    throw new InvalidArgsException("target ([user@]host) is invalid");
+                }
+                User = match.Groups["user"].Value;
+                Host = match.Groups["host"].Value;
+                SshArgs = (SshArgs + " " + target).Trim();
+            }
+
         }
 
         static int Main(string[] args)
@@ -86,35 +99,16 @@ namespace mosh
             List<string> extraArgs;
             extraArgs = p.Parse(rawArgs);
 
-            if (showHelp)
-            {
-                ShowHelp(p);
-            }
+            if (showHelp) ShowHelp(p);
 
             if (!MoshPortRangeRx.IsMatch(args.MoshPortRange))
             {
                 throw new InvalidArgsException("invalid mosh port range - expected PORT or PORT[:PORT2]");
             }
 
-            if (extraArgs.Count < 1)
-            {
-                throw new InvalidArgsException("missing user@host");
-            }
-            if (extraArgs.Count > 1)
-            {
-                throw new InvalidArgsException("unexpected extra arguments");
-            }
-
-            var target = extraArgs[0];
-
-            var userHostMatch = UserHostRx.Match(target);
-            if (!userHostMatch.Success)
-            {
-                throw new InvalidArgsException("determining user and host from the specified arguments failed");
-            }
-            args.User = userHostMatch.Groups["user"].Value;
-            args.Host = userHostMatch.Groups["host"].Value;
-            args.SshArgs = (args.SshArgs + " " + target).Trim();
+            if (extraArgs.Count < 1) throw new InvalidArgsException("missing target ([user@]host)");
+            if (extraArgs.Count > 1) throw new InvalidArgsException("unexpected extra arguments");
+            args.SetTarget(extraArgs[0]);
 
             return args;
         }
@@ -122,7 +116,7 @@ namespace mosh
 
         private static void ShowHelp(OptionSet p)
         {
-            Console.Error.WriteLine("Usage: mosh [options] user@host");
+            Console.Error.WriteLine("Usage: mosh [options] [user@]host");
             Console.Error.WriteLine();
             p.WriteOptionDescriptions(Console.Out); 
             Console.Error.WriteLine();
