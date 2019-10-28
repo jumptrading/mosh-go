@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
@@ -18,37 +18,33 @@ namespace mosh
         public ConnectionError(string message) : base(message) { }
     }
 
-    enum ExitCode {
+    enum ExitCode 
+    {
         InvalidArgs = 254,
         ConnectionError = 255,
     }
 
     class Program
     {
-        private const string DefaultMoshPortRange = "60000:60999";
-
-        private static readonly Regex MoshPortRangeRx = new Regex(@"^\d{1,5}(:\d{1,5})?$");
-        private static readonly Regex UserHostRx = new Regex(@"^(?:(?<user>[^\s;@]+)(?:;[^\s@]*)?@)?(?<host>[^@\s:]+)$");
+        private static readonly Regex UserHostRx = new Regex(@"^(?<user>[^\s@]+)@(?<host>[^@\s]+)$");
 
         private class Args
         {
-            public string MoshPortRange;
-            public string SshArgs;
-            public string User;
-            public string Host;
+            internal string Client { get; set; }
 
-            internal void SetTarget(string target)
-            {
-                var match = UserHostRx.Match(target);
-                if (!match.Success)
-                {
-                    throw new InvalidArgsException("target ([user@]host) is invalid");
-                }
-                User = match.Groups["user"].Value;
-                Host = match.Groups["host"].Value;
-                SshArgs = (SshArgs + " " + target).Trim();
-            }
+            internal string Server { get; set; }
 
+            internal string SshArgs { get; set; }
+
+            internal string Predict { get; set; }
+
+            internal string MoshPortRange { get; set; } = "60000:61000";
+
+            internal bool NoInit { get; set; }
+
+            internal string User { get; set; }
+
+            internal string Host { get; set; }
         }
 
         static int Main(string[] args)
@@ -56,59 +52,139 @@ namespace mosh
             try
             {
                 return Run(args);
-            } catch (Exception ex)
+            }
+            catch (Exception ex)
             {
-                if (ex is OptionException || 
-                    ex is InvalidArgsException)
+                if (ex is OptionException || ex is InvalidArgsException)
                 {
                     Console.Error.Write(ex.Message + " (try --help)");
+
                     return (int)ExitCode.InvalidArgs;
                 }
+
                 Console.Error.Write(ex.Message);
+
                 return (int)ExitCode.ConnectionError;
             }
         }
 
         static int Run(string[] rawArgs)
         {
-            var moshClient = new MoshClientWrapper();
             var args = ParseArgs(rawArgs);
 
-            var portAndKey = SshAuthenticator.GetMoshPortAndKey(args.SshArgs, args.MoshPortRange);
+            string sshCommand;
+            string sshArguments;
+
+            if (string.IsNullOrEmpty(args.SshArgs))
+            {
+                sshCommand = SshAuthenticator.GetSshLocation().QuoteIfNeeded();
+                sshArguments = string.Empty;
+            }
+            else
+            {
+                var commandAndArguments = args.SshArgs.SplitCommandAndArguments();
+
+                sshCommand = commandAndArguments.Item1;
+                sshArguments = commandAndArguments.Item2;
+            }
+
+            sshArguments +=
+                $" {args.User}@{args.Host} \"{(string.IsNullOrEmpty(args.Server) ? "mosh-server new" : args.Server)} -p {args.MoshPortRange}\"";
+
+            var portAndKey = SshAuthenticator.GetMoshPortAndKey(sshCommand, sshArguments.Trim());
 
             Console.Clear();
 
-            var ip = HostToIP(args.Host);
-            return moshClient.Start(args.User, ip, portAndKey.Port, portAndKey.Key);
+            var environmentVariables = new StringDictionary {{"MOSH_USER", args.User}, {"MOSH_KEY", portAndKey.Key}};
+
+            if (!string.IsNullOrEmpty(args.Predict))
+            {
+                environmentVariables["MOSH_PREDICTION_DISPLAY"] = args.Predict;
+            }
+
+            if (args.NoInit)
+            {
+                environmentVariables["MOSH_NO_TERM_INIT"] = "1";
+            }
+
+            var ip = HostToIp(args.Host);
+
+            return MoshClientWrapper.Start(args.Client, ip, portAndKey.Port, environmentVariables);
         }
 
         static Args ParseArgs(string []rawArgs)
         {
-            var args = new Args
-            {
-                MoshPortRange = DefaultMoshPortRange
-            };
+            var args = new Args();
 
             var showHelp = false;
-            var p = new OptionSet() {
-                { "p|port=", "server-side UDP port or {RANGE} (e.g. '60001:60005')", v => args.MoshPortRange = v },
-                { "ssh=", "ssh options to pass through when setting up session (e.g. '-p 2222')", v => args.SshArgs = v },
-                { "help", "Show help", v => showHelp = v != null },
+            var p = new OptionSet
+            {
+                {
+                    "client=", 
+                    "Path to client helper on local machine (default: \"mosh-client\")", 
+                    v => args.Client = v
+                },
+                {
+                    "server=",
+                    "Command to run server helper on remote machine (default: \"mosh-server\").\n\tExample: '--server=\"mosh-server new -v -c 256\"'.\n\tSee https://linux.die.net/man/1/mosh-server for more details.",
+                    v => args.Server = v
+                },
+                {
+                    "ssh=",
+                    "OpenSSH command to remotely execute mosh-server on remote machine (default: \"ssh\").\n\tExample: ''--ssh=\"ssh -p 2222\"'.\n\tSee https://man.openbsd.org/ssh for more details.",
+                    v => args.SshArgs = v
+                },
+                {
+                    "predict=",
+                    "Controls use of speculative local echo. Defaults to 'adaptive' (show predictions on slower links and to smooth out network glitches) and can also be 'always' or 'never'.",
+                    v => args.Predict = v
+                },
+                {
+                    "a", 
+                    "Synonym 'for --predict=always'.",
+                    v =>
+                    {
+                        if (v != null) args.Predict = "always";
+                    }
+                },
+                {
+                    "n", 
+                    "Synonym 'for --predict=never'.",
+                    v =>
+                    {
+                        if (v != null)  args.Predict = "never";
+                    }
+                },
+                {
+                    "p|port=", 
+                    "Use a particular server-side UDP port or port range, for example, if this is the only port that is forwarded through a firewall to the server. Otherwise, mosh will choose a port between 60000 and 61000.\n\tExample: '--port=60000:60100'", 
+                    v => args.MoshPortRange = v
+                },
+                {
+                    "help",
+                    "Show help.",
+                    v => showHelp = v != null
+                },
+                {
+                    "no-init",
+                    "Do not send the smcup initialization string and rmcup deinitialization string to the client's terminal. On many terminals this disables alternate screen mode.",
+                    v => args.NoInit = v != null
+                }
             };
 
-            List<string> extraArgs;
-            extraArgs = p.Parse(rawArgs);
+            var extraArgs = p.Parse(rawArgs);
 
             if (showHelp) ShowHelp(p);
 
-            if (!MoshPortRangeRx.IsMatch(args.MoshPortRange))
-            {
-                throw new InvalidArgsException("invalid mosh port range - expected PORT or PORT[:PORT2]");
-            }
+            if (extraArgs.Count < 1) throw new InvalidArgsException("Missing target ([user@]host).");
+            if (extraArgs.Count > 1) throw new InvalidArgsException("Unexpected extra arguments.");
 
-            if (extraArgs.Count < 1) throw new InvalidArgsException("missing target ([user@]host)");
-            if (extraArgs.Count > 1) throw new InvalidArgsException("unexpected extra arguments");
-            args.SetTarget(extraArgs[0]);
+            var targetMatch = UserHostRx.Match(extraArgs[0]);
+
+            if (!targetMatch.Success) throw new InvalidArgsException("Target ([user@]host) is invalid");
+
+            args.User = targetMatch.Groups["user"].Value;
+            args.Host = targetMatch.Groups["host"].Value;
 
             return args;
         }
@@ -116,33 +192,35 @@ namespace mosh
 
         private static void ShowHelp(OptionSet p)
         {
-            Console.Error.WriteLine("Usage: mosh [options] [user@]host");
-            Console.Error.WriteLine();
+            Console.WriteLine("Usage: mosh [options] [user@]host");
+            Console.WriteLine();
             p.WriteOptionDescriptions(Console.Out); 
-            Console.Error.WriteLine();
-            Console.Error.WriteLine("Exit codes:");
-            Console.Error.WriteLine("  254 - Invalid command line arguments");
-            Console.Error.WriteLine("  255 - Initial SSH of Mosh connection setup failed");
-            Console.Error.WriteLine("  All other values - Exit code returned by remote shell");
-            System.Environment.Exit(0);
+            Console.WriteLine();
+            Console.WriteLine("Exit codes:");
+            Console.WriteLine("  254 - Invalid command line arguments");
+            Console.WriteLine("  255 - Initial SSH of Mosh connection setup failed");
+            Console.WriteLine("  All other values - Exit code returned by remote shell");
+
+            Console.WriteLine();
+            Console.WriteLine("Press [Enter] to exit...");
+            Console.ReadLine();
+
+            Environment.Exit(0);
         }
 
-        private static IPAddress HostToIP(string host)
+        private static IPAddress HostToIp(string host)
         {
-            if (IPAddress.TryParse(host, out IPAddress ip))
+            if (IPAddress.TryParse(host, out var ip))
             {
                 return ip; // already in IP form
             }
 
             // Attempt DNS resolution.
-            IPHostEntry hostInfo;
-            hostInfo = Dns.GetHostEntry(host);
+            var hostInfo = Dns.GetHostEntry(host);
+
             ip = hostInfo.AddressList.FirstOrDefault();
-            if (ip == null)
-            {
-                throw new ConnectionError($"Failed to resolve host '{host}'");
-            }
-            return ip;
+
+            return ip ?? throw new ConnectionError($"Failed to resolve host '{host}'.");
         }
     }
 }
