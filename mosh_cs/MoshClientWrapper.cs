@@ -69,7 +69,7 @@ namespace mosh
             {
                 path = (string) asr.GetValue(MoshClientAppSettingsKey, typeof(string));
             }
-            catch (InvalidOperationException)
+            catch
             {
                 return null; // key is missing or wrong type, ignore
             }
