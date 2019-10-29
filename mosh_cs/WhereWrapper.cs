@@ -20,6 +20,8 @@ namespace mosh
 
                 var path = process.StandardOutput.ReadLine();
 
+                process.WaitForExit();
+
                 return process.ExitCode == 0 && !string.IsNullOrEmpty(path) && File.Exists(path) ? path : null;
             }
         }
