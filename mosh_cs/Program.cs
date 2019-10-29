@@ -3,7 +3,6 @@ using System.Collections.Specialized;
 using System.Linq;
 using System.Net;
 using System.Text.RegularExpressions;
-
 using NDesk.Options;
 
 namespace mosh
@@ -77,7 +76,7 @@ namespace mosh
 
             if (string.IsNullOrEmpty(args.SshArgs))
             {
-                sshCommand = SshAuthenticator.GetSshLocation().QuoteIfNeeded();
+                sshCommand = "ssh";
                 sshArguments = string.Empty;
             }
             else

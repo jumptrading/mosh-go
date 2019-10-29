@@ -7,24 +7,6 @@ namespace mosh
     {
         private static readonly Regex WhiteSpaceRx = new Regex(@"\s", RegexOptions.Compiled);
 
-        internal static string QuoteIfNeeded(this string input)
-        {
-            if (string.IsNullOrEmpty(input) || !WhiteSpaceRx.IsMatch(input))
-            {
-                // No need to quote
-                return input;
-            }
-
-            if (input[0] == '"' && input[0] == input[input.Length - 1])
-            {
-                // Already quoted
-                return input;
-            }
-
-            // TODO: Here it's assumed that input does not contain double quote character, which is OK for us (for paths and mosh-server command).
-            return $"\"{input}\"";
-        }
-
         internal static Tuple<string, string> SplitCommandAndArguments(this string commandAndArguments)
         {
             commandAndArguments = commandAndArguments?.Trim();

@@ -1,6 +1,4 @@
-﻿using System;
-using System.Diagnostics;
-using System.IO;
+﻿using System.Diagnostics;
 using System.Text.RegularExpressions;
 
 namespace mosh
@@ -23,20 +21,6 @@ namespace mosh
         private static readonly Regex MoshConnectRx =
             new Regex(@"^\s*MOSH\s+CONNECT\s+(?<mosh_port>\d{1,5})\s+(?<mosh_key>\S+)\s*$");
 
-        internal static string GetSshLocation()
-        {
-            return "ssh";
-            //
-            // See https://stackoverflow.com/a/25919981
-            //
-
-            var system32Folder = Environment.Is64BitOperatingSystem && !Environment.Is64BitProcess
-                ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), @"Sysnative")
-                : Environment.GetFolderPath(Environment.SpecialFolder.System);
-
-            return Path.Combine(system32Folder, @"OpenSSH\ssh.exe");
-        }
-
         internal static PortKeyPair GetMoshPortAndKey(string sshCommand, string sshArguments)
         {
             PortKeyPair portAndKey = null;
@@ -48,7 +32,7 @@ namespace mosh
                 sshProcess.StartInfo.UseShellExecute = false;
                 sshProcess.StartInfo.RedirectStandardInput = false;
                 sshProcess.StartInfo.RedirectStandardOutput = true;
-                sshProcess.StartInfo.RedirectStandardError = false;
+                sshProcess.StartInfo.RedirectStandardError = true;
                 sshProcess.Start();
 
                 // Find the MOSH_CONNECT string from mosh-server.

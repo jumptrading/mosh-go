@@ -117,6 +117,7 @@
   </ItemGroup>
   <PropertyGroup>
     <PostBuildEvent>if not exist Merged mkdir Merged
+copy /B /Y mosh-client.exe Merged\
 $(ILMergeConsolePath) /out:Merged\mosh.exe mosh.exe NDesk.Options.dll
 </PostBuildEvent>
   </PropertyGroup>
