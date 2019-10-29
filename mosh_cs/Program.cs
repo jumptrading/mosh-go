@@ -81,7 +81,7 @@ namespace mosh
             }
             else
             {
-                var commandAndArguments = args.SshArgs.SplitCommandAndArguments();
+                var commandAndArguments = CommandHelper.SplitCommandAndArguments(args.SshArgs);
 
                 sshCommand = commandAndArguments.Item1;
                 sshArguments = commandAndArguments.Item2;

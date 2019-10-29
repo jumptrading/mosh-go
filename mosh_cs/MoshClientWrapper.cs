@@ -44,7 +44,7 @@ namespace mosh
 
             // Locating mosh-client in the path
 
-            path = MoshClientExeName.WhereIs();
+            path = CommandHelper.FindCommandInThePath(MoshClientExeName);
 
             if (!string.IsNullOrEmpty(path)) return path;
 

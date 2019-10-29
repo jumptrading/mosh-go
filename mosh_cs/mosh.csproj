@@ -85,12 +85,11 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Helper.cs" />
+    <Compile Include="CommandHelper.cs" />
     <Compile Include="MoshClientWrapper.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="SshAuthenticator.cs" />
-    <Compile Include="WhereWrapper.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

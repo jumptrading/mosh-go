@@ -1,13 +1,15 @@
 ﻿using System;
+using System.Diagnostics;
+using System.IO;
 using System.Text.RegularExpressions;
 
 namespace mosh
 {
-    internal static class Helper
+    internal static class CommandHelper
     {
         private static readonly Regex WhiteSpaceRx = new Regex(@"\s", RegexOptions.Compiled);
 
-        internal static Tuple<string, string> SplitCommandAndArguments(this string commandAndArguments)
+        internal static Tuple<string, string> SplitCommandAndArguments(string commandAndArguments)
         {
             commandAndArguments = commandAndArguments?.Trim();
 
@@ -55,6 +57,27 @@ namespace mosh
 
             return Tuple.Create(commandAndArguments.Substring(0, whiteSpaceMatch.Index).Trim(),
                 commandAndArguments.Substring(whiteSpaceMatch.Index + 1).Trim());
+        }
+
+        internal static string FindCommandInThePath(string command)
+        {
+            using (var process = new Process())
+            {
+                process.StartInfo.FileName = "where";
+                process.StartInfo.Arguments = command;
+                process.StartInfo.UseShellExecute = false;
+                process.StartInfo.RedirectStandardInput = false;
+                process.StartInfo.RedirectStandardOutput = true;
+                process.StartInfo.RedirectStandardError = false;
+
+                process.Start();
+
+                var path = process.StandardOutput.ReadLine();
+
+                process.WaitForExit();
+
+                return process.ExitCode == 0 && !string.IsNullOrEmpty(path) && File.Exists(path) ? path : null;
+            }
         }
     }
 }
