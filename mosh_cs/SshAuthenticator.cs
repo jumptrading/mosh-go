@@ -32,7 +32,7 @@ namespace mosh
                 sshProcess.StartInfo.UseShellExecute = false;
                 sshProcess.StartInfo.RedirectStandardInput = false;
                 sshProcess.StartInfo.RedirectStandardOutput = true;
-                sshProcess.StartInfo.RedirectStandardError = true;
+                sshProcess.StartInfo.RedirectStandardError = false;
                 sshProcess.Start();
 
                 // Find the MOSH_CONNECT string from mosh-server.
