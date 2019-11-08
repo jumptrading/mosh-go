@@ -79,6 +79,12 @@ namespace mosh
                 sshCommand = "ssh";
                 sshArguments = string.Empty;
             }
+            else if (args.SshArgs.StartsWith("-", StringComparison.Ordinal))
+            {
+                // ssh arguments specified, but not the command itself
+                sshCommand = "ssh";
+                sshArguments = args.SshArgs;
+            }
             else
             {
                 var commandAndArguments = CommandHelper.SplitCommandAndArguments(args.SshArgs);
